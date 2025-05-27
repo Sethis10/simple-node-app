@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: yelp-camp-container
-          image: sagar608/newapp1:latest
+          image: sagar608/myapp:latest
           ports:
             - containerPort: 3000
           livenessProbe:
