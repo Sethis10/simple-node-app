@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bankapp-blue
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bankapp
+      version: blue
+  template:
+    metadata:
+      labels:
+        app: bankapp
+        version:blue
+    spec:
+      container:
+      - name: bankapp
+        image: sagar608/bankapp:blue
+        ports:
+      - containerPort: 8080
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "250m"
