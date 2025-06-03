@@ -1,0 +1,78 @@
+pipeline {
+    agent any
+    
+    parameters {
+        choice(name: 'DEPLOY_ENV', choices: ['blue', 'green'], description: 'Choose which environment to deploy: Blue or Green')
+        choice(name: 'DOCKER_TAG', choices: ['blue', 'green'], description: 'Choose the Docker image tag for the deployment')
+    }
+    
+    tools {
+        nodejs 'nodejs24'
+    }
+    
+    environment {
+        SCANNER_HOME=tool 'sonar-scanner'
+        DOCKER_IMAGE = "sagar608/bankapp"
+        TAG = "${params.DOCKER_TAG}"
+    }
+
+    stages {
+        stage('Git Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/Sethis10/simple-node-app.git'
+            }
+        }
+        
+        stage('Prepare app version') {
+            steps {
+                script {
+                    def selected = "${params.DEPLOY_ENV}app.js"
+                    sh "cp ${selected} app.js"
+                }
+            }
+        }
+        
+        stage('Install package dependencies') {
+            steps {
+                sh 'npm install'
+            }
+        }
+        
+        stage('Test') {
+            steps {
+                sh 'npm test'
+            }
+        }
+        
+        stage('Sonar-Analysis') {
+            steps {
+                withSonarQubeEnv('sonar') {
+                    sh "$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=BankApp -Dsonar.projectKey=BankApp"
+                }
+            }
+        }
+        
+        stage('Docker Build and Tag') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
+                        sh "docker build -t ${DOCKER_IMAGE}:${TAG} ."
+                        sh "docker push ${DOCKER_IMAGE}:${TAG}"
+                    }
+                }
+            }
+        }
+        
+        stage('Docker deploy') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
+                        // stop any existing container
+                        sh "docker rm -f bankapp || true"
+                        sh "docker run -d --name bankapp -p 3000:8080 ${DOCKER_IMAGE}:${TAG}"
+                    }
+                }
+            }
+        }
+    }
+}
